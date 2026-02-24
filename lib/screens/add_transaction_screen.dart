@@ -16,7 +16,7 @@ class AddTransactionScreen extends StatefulWidget {
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
-  late final _dateController = TextEditingController();
+  final _dateController = TextEditingController();
 
   String _selectedCategory = 'Makan';
   String _transactionType = 'expense';
@@ -51,13 +51,36 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       selectedDate = tx.date;
       _updateDateField();
 
-      final formattedAmount = NumberFormat('#,##0', 'id_ID').format(tx.amount);
+      final formattedAmount =
+          NumberFormat('#,##0', 'id_ID').format(tx.amount);
       _amountController.text = 'Rp. $formattedAmount';
     }
   }
 
   void _updateDateField() {
-    _dateController.text = "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}";
+    _dateController.text =
+        "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}";
+  }
+
+  List<String> get _currentCategories =>
+      _transactionType == 'expense'
+          ? _expenseCategories
+          : _incomeCategories;
+
+  Future<void> _selectDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+        _updateDateField();
+      });
+    }
   }
 
   void _saveTransaction() async {
@@ -65,46 +88,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final amountText = _amountController.text.startsWith('Rp. ')
         ? _amountController.text.substring(4)
         : _amountController.text;
-    final cleanAmount = amountText.replaceAll(RegExp(r'[^\d]'), '');
 
-    if (title.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Judul wajib diisi!')),
-        );
-      }
-      return;
-    }
+    final cleanAmount =
+        amountText.replaceAll(RegExp(r'[^\d]'), '');
 
-    if (cleanAmount.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jumlah wajib diisi!')),
-        );
-      }
-      return;
-    }
+    if (title.isEmpty || cleanAmount.isEmpty) return;
 
-    double amount;
-    try {
-      amount = double.parse(cleanAmount);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jumlah harus angka!')),
-        );
-      }
-      return;
-    }
-
-    if (amount <= 0) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jumlah harus > 0!')),
-        );
-      }
-      return;
-    }
+    double amount = double.parse(cleanAmount);
 
     final newTx = Transaction(
       id: widget.initialTx?.id ?? DateTime.now().toString(),
@@ -116,289 +106,233 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       description: title,
     );
 
-    List<Transaction> transactions = await DatabaseService.loadTransactions();
+    List<Transaction> transactions =
+        await DatabaseService.loadTransactions();
+
     if (widget.initialTx != null) {
-      transactions.removeWhere((tx) => tx.id == widget.initialTx!.id);
+      transactions.removeWhere(
+          (tx) => tx.id == widget.initialTx!.id);
     }
+
     transactions.add(newTx);
     await DatabaseService.saveTransactions(transactions);
 
     Navigator.pop(context, newTx);
   }
 
-  void _deleteTransaction() async {
-    if (widget.initialTx == null) return;
-
-    final tx = widget.initialTx!;
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Hapus Transaksi?'),
-          content: Text('Apakah Anda yakin ingin menghapus "${tx.title}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Batal'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-
-                List<Transaction> transactions = await DatabaseService.loadTransactions();
-                transactions.removeWhere((t) => t.id == tx.id);
-                await DatabaseService.saveTransactions(transactions);
-
-                Navigator.pop(context, 'deleted');
-              },
-              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  List<String> get _currentCategories =>
-      _transactionType == 'expense' ? _expenseCategories : _incomeCategories;
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-        _updateDateField();
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
-        title: Text(widget.initialTx != null ? 'Edit Transaksi' : 'Buat Transaksi',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.orange,
+        backgroundColor: const Color(0xFF0A1F44),
+        elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+        title: Text(
+          widget.initialTx != null
+              ? 'Edit Transaksi'
+              : 'Buat Transaksi',
+          style:
+              const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _transactionType = 'expense';
-                            _selectedCategory = 'Makan';
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _transactionType == 'expense'
-                                ? Colors.red
-                                : Colors.white,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(8),
-                              bottomLeft: Radius.circular(8),
-                            ),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Pengeluaran',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _transactionType = 'income';
-                            _selectedCategory = 'Gaji';
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _transactionType == 'income'
-                                ? Colors.green
-                                : Colors.white,
-                            borderRadius: const BorderRadius.only(
-                              topRight: Radius.circular(8),
-                              bottomRight: Radius.circular(8),
-                            ),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Pemasukan',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              Text('Tanggal', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              GestureDetector(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _buildTypeSelector(),
+            const SizedBox(height: 25),
+            _buildCardField(
+              title: "Tanggal",
+              child: GestureDetector(
                 onTap: () => _selectDate(context),
                 child: AbsorbPointer(
                   child: TextField(
                     controller: _dateController,
-                    decoration: const InputDecoration(
-                      hintText: 'Pilih tanggal',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: _inputDecoration(
+                        "Pilih tanggal"),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-
-              Text('Kategori', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              DropdownButtonFormField<String>(
+            ),
+            const SizedBox(height: 16),
+            _buildCardField(
+              title: "Kategori",
+              child: DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                items: _currentCategories.map((cat) {
-                  return DropdownMenuItem(value: cat, child: Text(cat));
-                }).toList(),
+                items: _currentCategories
+                    .map((cat) => DropdownMenuItem(
+                        value: cat,
+                        child: Text(cat)))
+                    .toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedCategory = value!;
                   });
                 },
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Pilih kategori',
-                ),
+                decoration:
+                    _inputDecoration("Pilih kategori"),
               ),
-              const SizedBox(height: 16),
-
-              Text('Jumlah', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              TextField(
+            ),
+            const SizedBox(height: 16),
+            _buildCardField(
+              title: "Jumlah",
+              child: TextField(
                 controller: _amountController,
-                keyboardType: TextInputType.number,
+                keyboardType:
+                    TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
+                  FilteringTextInputFormatter
+                      .digitsOnly,
                 ],
-                decoration: const InputDecoration(
-                  hintText: 'Rp. 100.000',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) {
-                  if (value == 'Rp. ') return;
-
-                  String clean = value.startsWith('Rp. ') ? value.substring(4) : value;
-                  clean = clean.replaceAll(RegExp(r'[^\d]'), '');
-
-                  if (clean.isEmpty) {
-                    _amountController.text = 'Rp. ';
-                    return;
-                  }
-
-                  int num = int.tryParse(clean) ?? 0;
-                  String formatted = NumberFormat('#,##0', 'id_ID').format(num);
-                  _amountController.text = 'Rp. $formatted';
-
-                  _amountController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: _amountController.text.length),
-                  );
-                },
+                decoration:
+                    _inputDecoration("Rp. 100.000"),
               ),
-              const SizedBox(height: 16),
-
-              Text('Keterangan', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              TextField(
-                controller: _descriptionController,
+            ),
+            const SizedBox(height: 16),
+            _buildCardField(
+              title: "Keterangan",
+              child: TextField(
+                controller:
+                    _descriptionController,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Contoh: Gaji pertama / Beli makan siang',
-                  border: OutlineInputBorder(),
+                decoration: _inputDecoration(
+                    "Contoh: Gaji / Beli makan"),
+              ),
+            ),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: _saveTransaction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      const Color(0xFF0A1F44),
+                  shape:
+                      RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  "Simpan",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight:
+                          FontWeight.bold),
                 ),
               ),
-              const SizedBox(height: 40),
+            )
+          ],
+        ),
+      ),
+    );
+  }
 
-              if (widget.initialTx != null)
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.grey),
-                          foregroundColor: Colors.grey,
-                        ),
-                        child: const Text('Batal'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _deleteTransaction,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('Hapus'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _saveTransaction,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('Simpan'),
-                      ),
-                    ),
-                  ],
-                )
-              else
-                ElevatedButton(
-                  onPressed: _saveTransaction,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text('Simpan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ),
-            ],
+  Widget _buildTypeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius:
+            BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          _typeButton("expense", "Pengeluaran"),
+          _typeButton("income", "Pemasukan"),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeButton(String value, String label) {
+    final selected =
+        _transactionType == value;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _transactionType = value;
+            _selectedCategory =
+                value == "expense"
+                    ? _expenseCategories.first
+                    : _incomeCategories.first;
+          });
+        },
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(
+                  vertical: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFF0A1F44)
+                : Colors.transparent,
+            borderRadius:
+                BorderRadius.circular(25),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : Colors.black54,
+                fontWeight:
+                    FontWeight.w600,
+              ),
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCardField(
+      {required String title,
+      required Widget child}) {
+    return Container(
+      padding:
+          const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius:
+            BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black
+                  .withOpacity(0.04),
+              blurRadius: 10)
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontWeight:
+                      FontWeight.bold)),
+          const SizedBox(height: 8),
+          child
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(
+      String hint) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor:
+          const Color(0xFFF4F6FA),
+      border: OutlineInputBorder(
+        borderRadius:
+            BorderRadius.circular(12),
+        borderSide: BorderSide.none,
       ),
     );
   }
