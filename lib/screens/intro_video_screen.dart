@@ -79,7 +79,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
           // Background
           Positioned.fill(
             child: Image.asset(
-              'assets/bg.png',
+              'assets/images/bg.png',
               fit: BoxFit.cover,
             ),
           ),
@@ -100,7 +100,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
             },
             child: Center(
               child: Image.asset(
-                'assets/wallet.png',
+                'assets/images/wallet.png',
                 width: 130,
               ),
             ),
