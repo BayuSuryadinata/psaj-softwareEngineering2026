@@ -6,6 +6,7 @@ class Transaction {
   String category;
   String type; // 'income' or 'expense'
   String description;
+  String mood; // 🔥 BARU
 
   Transaction({
     required this.id,
@@ -15,6 +16,7 @@ class Transaction {
     required this.category,
     required this.type,
     required this.description,
+    required this.mood, // 🔥 WAJIB
   });
 
   Map<String, dynamic> toJson() {
@@ -26,6 +28,7 @@ class Transaction {
       'category': category,
       'type': type,
       'description': description,
+      'mood': mood, // 🔥 SIMPAN MOOD
     };
   }
 
@@ -38,6 +41,7 @@ class Transaction {
       category: json['category'] ?? '',
       type: json['type'] ?? '',
       description: json['description'] ?? '',
+      mood: json['mood'] ?? 'calm', // default kalau data lama
     );
   }
 }

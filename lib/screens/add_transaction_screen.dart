@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction.dart';
 import '../services/database_service.dart';
+import '../models/mood.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final Transaction? initialTx;
@@ -22,6 +23,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _transactionType = 'expense';
 
   DateTime selectedDate = DateTime.now();
+  MoodType? _selectedMood;
 
   final List<String> _expenseCategories = [
     'Makan',
@@ -54,6 +56,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final formattedAmount =
           NumberFormat('#,##0', 'id_ID').format(tx.amount);
       _amountController.text = 'Rp. $formattedAmount';
+
+      // 🔥 LOAD MOOD SAAT EDIT
+      _selectedMood = MoodType.values.firstWhere(
+        (m) => m.name == tx.mood,
+        orElse: () => MoodType.calm,
+      );
     }
   }
 
@@ -75,7 +83,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       lastDate: DateTime(2101),
     );
 
-    if (picked != null && picked != selectedDate) {
+    if (picked != null) {
       setState(() {
         selectedDate = picked;
         _updateDateField();
@@ -92,7 +100,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final cleanAmount =
         amountText.replaceAll(RegExp(r'[^\d]'), '');
 
-    if (title.isEmpty || cleanAmount.isEmpty) return;
+    if (title.isEmpty ||
+        cleanAmount.isEmpty ||
+        _selectedMood == null) {
+      _showMessage("Lengkapi semua data dan pilih mood.");
+      return;
+    }
 
     double amount = double.parse(cleanAmount);
 
@@ -104,6 +117,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       category: _selectedCategory,
       type: _transactionType,
       description: title,
+      mood: _selectedMood!.name,
     );
 
     List<Transaction> transactions =
@@ -120,20 +134,28 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     Navigator.pop(context, newTx);
   }
 
+  void _showMessage(String msg) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Informasi"),
+        content: Text(msg),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A1F44),
-        elevation: 0,
         centerTitle: true,
         title: Text(
           widget.initialTx != null
               ? 'Edit Transaksi'
               : 'Buat Transaksi',
-          style:
-              const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
@@ -142,6 +164,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           children: [
             _buildTypeSelector(),
             const SizedBox(height: 25),
+
             _buildCardField(
               title: "Tanggal",
               child: GestureDetector(
@@ -149,21 +172,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 child: AbsorbPointer(
                   child: TextField(
                     controller: _dateController,
-                    decoration: _inputDecoration(
-                        "Pilih tanggal"),
+                    decoration:
+                        _inputDecoration("Pilih tanggal"),
                   ),
                 ),
               ),
             ),
+
             const SizedBox(height: 16),
+
             _buildCardField(
               title: "Kategori",
               child: DropdownButtonFormField<String>(
                 value: _selectedCategory,
                 items: _currentCategories
                     .map((cat) => DropdownMenuItem(
-                        value: cat,
-                        child: Text(cat)))
+                        value: cat, child: Text(cat)))
                     .toList(),
                 onChanged: (value) {
                   setState(() {
@@ -174,33 +198,86 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     _inputDecoration("Pilih kategori"),
               ),
             ),
+
             const SizedBox(height: 16),
+
             _buildCardField(
               title: "Jumlah",
               child: TextField(
                 controller: _amountController,
-                keyboardType:
-                    TextInputType.number,
+                keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter
-                      .digitsOnly,
+                  FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration:
-                    _inputDecoration("Rp. 100.000"),
+                    _inputDecoration("Rp. 100000"),
               ),
             ),
+
             const SizedBox(height: 16),
+
             _buildCardField(
               title: "Keterangan",
               child: TextField(
-                controller:
-                    _descriptionController,
+                controller: _descriptionController,
                 maxLines: 3,
-                decoration: _inputDecoration(
-                    "Contoh: Gaji / Beli makan"),
+                decoration:
+                    _inputDecoration("Contoh: Gaji / Beli makan"),
               ),
             ),
+
+            const SizedBox(height: 16),
+
+            // 🔥 MOOD CARD
+            _buildCardField(
+              title: "Kondisi Emosi Saat Transaksi",
+              child: Wrap(
+                spacing: 10,
+                children: MoodType.values.map((mood) {
+                  final isSelected =
+                      _selectedMood == mood;
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedMood = mood;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration:
+                          const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF0A1F44)
+                            : Colors.white,
+                        borderRadius:
+                            BorderRadius.circular(30),
+                        border: Border.all(
+                          color:
+                              const Color(0xFF0A1F44),
+                        ),
+                      ),
+                      child: Text(
+                        "${mood.emoji} ${mood.label}",
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.black87,
+                          fontWeight:
+                              FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
             const SizedBox(height: 40),
+
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -209,8 +286,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       const Color(0xFF0A1F44),
-                  shape:
-                      RoundedRectangleBorder(
+                  shape: RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.circular(16),
                   ),
@@ -219,8 +295,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   "Simpan",
                   style: TextStyle(
                       fontSize: 16,
-                      fontWeight:
-                          FontWeight.bold),
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             )
@@ -248,8 +323,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Widget _typeButton(String value, String label) {
-    final selected =
-        _transactionType == value;
+    final selected = _transactionType == value;
 
     return Expanded(
       child: GestureDetector(
@@ -264,8 +338,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         },
         child: Container(
           padding:
-              const EdgeInsets.symmetric(
-                  vertical: 12),
+              const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: selected
                 ? const Color(0xFF0A1F44)
@@ -280,8 +353,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 color: selected
                     ? Colors.white
                     : Colors.black54,
-                fontWeight:
-                    FontWeight.w600,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -294,8 +366,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       {required String title,
       required Widget child}) {
     return Container(
-      padding:
-          const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius:
@@ -313,8 +384,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         children: [
           Text(title,
               style: const TextStyle(
-                  fontWeight:
-                      FontWeight.bold)),
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           child
         ],

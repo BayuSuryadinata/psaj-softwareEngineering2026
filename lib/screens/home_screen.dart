@@ -4,6 +4,9 @@ import '../services/database_service.dart';
 import 'statistics_screen.dart';
 import 'history_screen.dart';
 import 'add_transaction_screen.dart';
+import 'transfer_bank_screen.dart';
+import 'mood_analysis_screen.dart'; // ✅ TAMBAHAN NAVIGASI MOOD
+import 'target_savings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -141,7 +144,15 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildCircleButton(
             icon: Icons.swap_horiz_rounded,
             label: "Transfer",
-            onTap: () {},
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const TransferBankScreen(),
+                ),
+              );
+              _loadData();
+            },
           ),
           const SizedBox(width: 25),
           _buildCircleButton(
@@ -170,10 +181,33 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           const SizedBox(width: 25),
+
+          // 🔥 ICON MOOD MONEY (SUDAH ADA NAVIGASI)
           _buildCircleButton(
-            icon: Icons.volunteer_activism_rounded,
-            label: "Berbagi",
-            onTap: () {},
+            icon: Icons.psychology_rounded,
+            label: "Mood Money",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const MoodAnalysisScreen()
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 25),
+          _buildCircleButton(
+            icon: Icons.savings_rounded,
+            label: "Tabungan",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TargetSavingsScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
